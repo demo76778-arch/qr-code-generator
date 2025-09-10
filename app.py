@@ -4,19 +4,21 @@ Static Google Review QR Generator (Streamlit Web App Version)
 - Generates a QR code and displays it on a web page.
 - The QR code directly opens the Google review page.
 - Generates an AI review suggestion for the user to copy.
+- Automatically copies the review to clipboard (browser-based solution)
 """
 
 import streamlit as st
 import qrcode
 import random
 from PIL import Image
-import io  # Needed to handle image data in memory
+import io
+import streamlit.components.v1 as components
 
 # ---------------- Configuration ----------------
 BUSINESS_NAME = "Ludhiana SEO Expert"
 PLACE_ID = "ChIJP1UfWFWDGjkRxFYT32EgTVI"  # Your specific Google Place ID
 
-# ---------------- Helper Functions (This part is unchanged) ----------------
+# ---------------- Helper Functions ----------------
 
 def generate_ai_review():
     """Generate a random positive review for the business."""
@@ -46,7 +48,46 @@ def generate_ai_review():
               f"{random.choice(actions)} {random.choice(recommendations)}")
     return review
 
-# ---------------- Streamlit Web App Interface (This part is completely new) ----------------
+def copy_to_clipboard_js(text):
+    """Generate JavaScript code to copy text to clipboard"""
+    # Escape quotes and newlines in the text for JavaScript
+    escaped_text = text.replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n')
+    
+    js_code = f"""
+    <script>
+    function copyToClipboard() {{
+        const text = '{escaped_text}';
+        navigator.clipboard.writeText(text).then(function() {{
+            // Show success message
+            const msg = document.createElement('div');
+            msg.innerHTML = '✅ Review copied to clipboard!';
+            msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#28a745;color:white;padding:10px;border-radius:5px;z-index:1000;';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+        }}).catch(function(err) {{
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            const msg = document.createElement('div');
+            msg.innerHTML = '✅ Review copied to clipboard!';
+            msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#28a745;color:white;padding:10px;border-radius:5px;z-index:1000;';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+        }});
+    }}
+    
+    // Automatically copy when this script loads
+    copyToClipboard();
+    </script>
+    """
+    return js_code
+
+# ---------------- Streamlit Web App Interface ----------------
 
 # Set the page title and layout
 st.set_page_config(page_title="Review QR Generator", layout="centered")
@@ -54,14 +95,15 @@ st.set_page_config(page_title="Review QR Generator", layout="centered")
 # Display titles and information
 st.title(f"Google Review QR Generator")
 st.header(f"For: {BUSINESS_NAME}")
-st.write("Click the button to generate a QR code that links directly to the Google review page. A sample review will also be generated for inspiration.")
+st.write("Click the button to generate a QR code that links directly to the Google review page. A sample review will also be generated and automatically copied to your clipboard.")
 
 # Use Streamlit's session state to store the generated data
-# This prevents the QR code from disappearing after it's generated
 if 'qr_image' not in st.session_state:
     st.session_state.qr_image = None
 if 'review_text' not in st.session_state:
     st.session_state.review_text = ""
+if 'just_generated' not in st.session_state:
+    st.session_state.just_generated = False
 
 # Create the main button
 if st.button("🚀 Generate QR Code & Review", type="primary"):
@@ -88,6 +130,7 @@ if st.button("🚀 Generate QR Code & Review", type="primary"):
     # Store the generated data in the session state
     st.session_state.qr_image = byte_im
     st.session_state.review_text = generate_ai_review()
+    st.session_state.just_generated = True
 
 # --- Display the results if they exist in the session state ---
 if st.session_state.qr_image:
@@ -102,8 +145,42 @@ if st.session_state.qr_image:
         st.caption("Scan this with your phone to go directly to the review page.")
     
     st.subheader("AI-Generated Review Suggestion:")
-    st.text_area(
-        label="You can copy this text:", 
-        value=st.session_state.review_text, 
-        height=150
-    )
+    
+    # Create columns for the text area and copy button
+    text_col, button_col = st.columns([4, 1])
+    
+    with text_col:
+        st.text_area(
+            label="Review text:", 
+            value=st.session_state.review_text, 
+            height=150,
+            key="review_display"
+        )
+    
+    with button_col:
+        st.write("")  # Add some spacing
+        st.write("")
+        if st.button("📋 Copy", help="Copy review to clipboard"):
+            # Trigger JavaScript to copy to clipboard
+            components.html(copy_to_clipboard_js(st.session_state.review_text), height=0)
+    
+    # Auto-copy functionality - runs only when content is just generated
+    if st.session_state.just_generated:
+        st.info("📋 Review has been automatically copied to your clipboard!")
+        # Execute JavaScript to copy to clipboard automatically
+        components.html(copy_to_clipboard_js(st.session_state.review_text), height=0)
+        # Reset the flag
+        st.session_state.just_generated = False
+
+# Add some styling and instructions
+st.markdown("""
+---
+### Instructions:
+1. Click the "Generate QR Code & Review" button
+2. The review will be automatically copied to your clipboard
+3. You can also manually copy using the "📋 Copy" button
+4. Scan the QR code with your phone to open Google Reviews
+5. Paste the review text when writing your review
+
+**Note:** Clipboard functionality works best in modern browsers with HTTPS.
+""")  
