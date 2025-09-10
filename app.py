@@ -11,11 +11,11 @@ import qrcode
 import random
 from PIL import Image
 import io  # Needed to handle image data in memory
-from streamlit_copy_to_clipboard import st_copy_to_clipboard # NEW LINE: Import the copy-to-clipboard component
+from streamlit_copy_to_clipboard import st_copy_to_clipboard
 
 # ---------------- Configuration ----------------
 BUSINESS_NAME = "Ludhiana SEO Expert"
-PLACE_ID = "ChIJP1UfWFWDGjkRxFYT32EgTVI"  # Your specific Google Place ID
+PLACE_ID = "ChIJP1UfWFWDGjkRxFYT32EgTVI"
 
 # ---------------- Helper Functions (This part is unchanged) ----------------
 
@@ -53,7 +53,7 @@ def generate_ai_review():
 st.set_page_config(page_title="Review QR Generator", layout="centered")
 
 # Display titles and information
-st.title(f"Google Review QR Generator")
+st.title("Google Review QR Generator")
 st.header(f"For: {BUSINESS_NAME}")
 st.write("Click the button to generate a QR code that links directly to the Google review page. A sample review will also be generated for inspiration.")
 
@@ -65,7 +65,6 @@ if 'review_text' not in st.session_state:
 
 # Create the main button
 if st.button("🚀 Generate QR Code & Review", type="primary"):
-    # This block of code runs ONLY when the button is clicked
     google_review_url = f"https://search.google.com/local/writereview?placeid={PLACE_ID}"
 
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
@@ -83,21 +82,20 @@ if st.button("🚀 Generate QR Code & Review", type="primary"):
 # --- Display the results if they exist in the session state ---
 if st.session_state.qr_image:
     st.divider()
-    
+
     col1, col2 = st.columns([1, 2])
     with col1:
         st.image(st.session_state.qr_image, width=200)
     with col2:
         st.success("QR Code Generated!")
         st.caption("Scan this with your phone to go directly to the review page.")
-    
+
     st.subheader("AI-Generated Review Suggestion:")
-    
-    # NEW LINE: Add the copy to clipboard button
+
     st_copy_to_clipboard(text=st.session_state.review_text, label="📋 Copy Review to Clipboard")
-    
+
     st.text_area(
-        label="You can also copy the text manually from here:", 
-        value=st.session_state.review_text, 
+        label="You can also copy the text manually from here:",
+        value=st.session_state.review_text,
         height=150
-    )    
+    )
