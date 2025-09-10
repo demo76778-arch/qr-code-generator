@@ -101,6 +101,3 @@ if st.session_state.qr_image:
         value=st.session_state.review_text, 
         height=150
     )    
-  
-
-
