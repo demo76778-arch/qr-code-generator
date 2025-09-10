@@ -1,22 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Static Google Review QR Generator (No Files Saved)
-- Generates QR code in-memory and displays it in the GUI.
-- The QR code directly opens the Google review page (no hosting needed).
-- Copies an AI-generated review suggestion to the clipboard.
+Static Google Review QR Generator (Streamlit Web App Version)
+- Generates a QR code and displays it on a web page.
+- The QR code directly opens the Google review page.
+- Generates an AI review suggestion for the user to copy.
 """
 
+import streamlit as st
 import qrcode
 import random
-import tkinter as tk
-from tkinter import messagebox, scrolledtext, font
-from PIL import Image, ImageTk
+from PIL import Image
+import io  # Needed to handle image data in memory
 
 # ---------------- Configuration ----------------
 BUSINESS_NAME = "Ludhiana SEO Expert"
 PLACE_ID = "ChIJP1UfWFWDGjkRxFYT32EgTVI"  # Your specific Google Place ID
 
-# ---------------- Helper Functions ----------------
+# ---------------- Helper Functions (This part is unchanged) ----------------
 
 def generate_ai_review():
     """Generate a random positive review for the business."""
@@ -46,96 +46,64 @@ def generate_ai_review():
               f"{random.choice(actions)} {random.choice(recommendations)}")
     return review
 
-# ---------------- QR Generation Logic ----------------
+# ---------------- Streamlit Web App Interface (This part is completely new) ----------------
 
-def generate_qr():
-    """
-    Generates the QR code in memory, displays it, and copies the review.
-    """
-    try:
-        # The final URL that directly opens the review dialog
-        google_review_url = f"https://search.google.com/local/writereview?placeid={PLACE_ID}"
+# Set the page title and layout
+st.set_page_config(page_title="Review QR Generator", layout="centered")
 
-        # Generate QR code pointing directly to the review URL
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(google_review_url)
-        qr.make(fit=True)
+# Display titles and information
+st.title(f"Google Review QR Generator")
+st.header(f"For: {BUSINESS_NAME}")
+st.write("Click the button to generate a QR code that links directly to the Google review page. A sample review will also be generated for inspiration.")
 
-        # Create an image from the QR Code instance IN MEMORY
-        img = qr.make_image(fill_color="black", back_color="white")
+# Use Streamlit's session state to store the generated data
+# This prevents the QR code from disappearing after it's generated
+if 'qr_image' not in st.session_state:
+    st.session_state.qr_image = None
+if 'review_text' not in st.session_state:
+    st.session_state.review_text = ""
 
-        # Display QR in the GUI without saving to a file
-        # Convert the PIL image to a PhotoImage for Tkinter
-        resized_img = img.resize((200, 200), Image.LANCZOS)
-        qr_photo = ImageTk.PhotoImage(resized_img)
-        
-        qr_label.config(image=qr_photo)
-        qr_label.image = qr_photo # Keep a reference to avoid garbage collection
+# Create the main button
+if st.button("🚀 Generate QR Code & Review", type="primary"):
+    # This block of code runs ONLY when the button is clicked
 
-        # Generate AI review and copy to clipboard
-        ai_review = generate_ai_review()
-        review_box.delete("1.0", tk.END)
-        review_box.insert("1.0", ai_review)
-        
-        root.clipboard_clear()
-        root.clipboard_append(ai_review)
-        
-        messagebox.showinfo("Success", "QR Code Generated!\n\nThe suggested review has been copied to your clipboard.")
+    # --- QR Generation Logic ---
+    google_review_url = f"https://search.google.com/local/writereview?placeid={PLACE_ID}"
 
-    except Exception as e:
-        messagebox.showerror("Error", f"An unexpected error occurred: {e}")
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(google_review_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
 
+    # Save the QR code image to a memory buffer instead of a file
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    byte_im = buf.getvalue()
 
-# ---------------- GUI Setup ----------------
-root = tk.Tk()
-root.title(f"QR Generator - {BUSINESS_NAME}")
-root.geometry("450x550")
-root.resizable(False, False)
-root.configure(bg="#f0f2f5")
+    # Store the generated data in the session state
+    st.session_state.qr_image = byte_im
+    st.session_state.review_text = generate_ai_review()
 
-main_frame = tk.Frame(root, padx=20, pady=20, bg="#f0f2f5")
-main_frame.pack(fill="both", expand=True)
-
-# --- Fonts ---
-title_font = font.Font(family="Arial", size=14, weight="bold")
-button_font = font.Font(family="Arial", size=12, weight="bold")
-label_font = font.Font(family="Arial", size=11)
-
-# --- Widgets ---
-tk.Label(main_frame, text="Google Review QR Code", font=title_font, bg="#f0f2f5").pack(pady=(0, 15))
-
-generate_button = tk.Button(
-    main_frame, 
-    text="Generate QR Code & Copy Review", 
-    command=generate_qr, 
-    font=button_font,
-    bg="#007bff", 
-    fg="white", 
-    relief="flat", 
-    padx=15, 
-    pady=10, 
-    cursor="hand2"
-)
-generate_button.pack(pady=10)
-
-qr_label = tk.Label(main_frame, bg="#f0f2f5")
-qr_label.pack(pady=15)
-
-tk.Label(main_frame, text="AI Review Suggestion (Copied to Clipboard):", font=label_font, bg="#f0f2f5").pack(anchor="w")
-review_box = scrolledtext.ScrolledText(
-    main_frame, 
-    width=50, 
-    height=8, 
-    wrap=tk.WORD, 
-    font=("Arial", 10), 
-    relief="solid", 
-    borderwidth=1
-)
-review_box.pack(pady=5, fill="x", expand=True)
-
-root.mainloop()  
+# --- Display the results if they exist in the session state ---
+if st.session_state.qr_image:
+    st.divider()
+    
+    # Use columns for a nice layout
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.image(st.session_state.qr_image, width=200)
+    with col2:
+        st.success("QR Code Generated!")
+        st.caption("Scan this with your phone to go directly to the review page.")
+    
+    st.subheader("AI-Generated Review Suggestion:")
+    st.text_area(
+        label="You can copy this text:", 
+        value=st.session_state.review_text, 
+        height=150
+    )     
