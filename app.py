@@ -11,11 +11,10 @@ import qrcode
 import random
 from PIL import Image
 import io  # Needed to handle image data in memory
-from streamlit_copy_to_clipboard import st_copy_to_clipboard
 
 # ---------------- Configuration ----------------
 BUSINESS_NAME = "Ludhiana SEO Expert"
-PLACE_ID = "ChIJP1UfWFWDGjkRxFYT32EgTVI"
+PLACE_ID = "ChIJP1UfWFWDGjkRxFYT32EgTVI"  # Your specific Google Place ID
 
 # ---------------- Helper Functions (This part is unchanged) ----------------
 
@@ -47,17 +46,18 @@ def generate_ai_review():
               f"{random.choice(actions)} {random.choice(recommendations)}")
     return review
 
-# ---------------- Streamlit Web App Interface ----------------
+# ---------------- Streamlit Web App Interface (This part is completely new) ----------------
 
 # Set the page title and layout
 st.set_page_config(page_title="Review QR Generator", layout="centered")
 
 # Display titles and information
-st.title("Google Review QR Generator")
+st.title(f"Google Review QR Generator")
 st.header(f"For: {BUSINESS_NAME}")
 st.write("Click the button to generate a QR code that links directly to the Google review page. A sample review will also be generated for inspiration.")
 
 # Use Streamlit's session state to store the generated data
+# This prevents the QR code from disappearing after it's generated
 if 'qr_image' not in st.session_state:
     st.session_state.qr_image = None
 if 'review_text' not in st.session_state:
@@ -65,37 +65,45 @@ if 'review_text' not in st.session_state:
 
 # Create the main button
 if st.button("🚀 Generate QR Code & Review", type="primary"):
+    # This block of code runs ONLY when the button is clicked
+
+    # --- QR Generation Logic ---
     google_review_url = f"https://search.google.com/local/writereview?placeid={PLACE_ID}"
 
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
     qr.add_data(google_review_url)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
 
+    # Save the QR code image to a memory buffer instead of a file
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     byte_im = buf.getvalue()
 
+    # Store the generated data in the session state
     st.session_state.qr_image = byte_im
     st.session_state.review_text = generate_ai_review()
 
 # --- Display the results if they exist in the session state ---
 if st.session_state.qr_image:
     st.divider()
-
+    
+    # Use columns for a nice layout
     col1, col2 = st.columns([1, 2])
     with col1:
         st.image(st.session_state.qr_image, width=200)
     with col2:
         st.success("QR Code Generated!")
         st.caption("Scan this with your phone to go directly to the review page.")
-
+    
     st.subheader("AI-Generated Review Suggestion:")
-
-    st_copy_to_clipboard(text=st.session_state.review_text, label="📋 Copy Review to Clipboard")
-
     st.text_area(
-        label="You can also copy the text manually from here:",
-        value=st.session_state.review_text,
+        label="You can copy this text:", 
+        value=st.session_state.review_text, 
         height=150
     )
