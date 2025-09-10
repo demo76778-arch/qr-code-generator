@@ -2,3 +2,5 @@ streamlit
 qrcode
 Pillow
 streamlit-copy-to-clipboard
+pyperclip
+
